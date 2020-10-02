@@ -32,17 +32,27 @@ class BubbleFifoTester_Victor extends FlatSpec with ChiselScalatestTester with M
   }
 
   it should "be empty after reset" in {
-    test(new BubbleFifo(32,4)) {
-      
+    test(new BubbleFifo(32, 4)) {
+      dut => {
+        val deq = dut.io.deq
+
+        dut.reset.poke(true.B)
+        dut.clock.step(1)
+        deq.empty.expect(true.B)
+      }
     }
   }
 
   it should "signal when full" in {
     test(new BubbleFifo(32,4)) {
       dut => {
-        for (i <- 0 until 4) {
+        val enq = dut.io.enq
+        val deq = dut.io.deq
+
+        enq.write.poke(true.B)
+        deq.read.poke(false.B)
+        while (enq.full.peek.litValue == 0){
           dut.io.enq.din.poke(1.U)
-          dut.io.enq.write.poke(true.B)
           dut.clock.step(1)
         }
         dut.io.enq.full.expect(true.B)
@@ -50,8 +60,43 @@ class BubbleFifoTester_Victor extends FlatSpec with ChiselScalatestTester with M
     }
   }
 
-  it should "find yourself 3 more test cases to test" in {
-    throw new Error("Missing tests")
+  it should "output order equals input order" in {
+    test(new BubbleFifo(32, 4)) {
+      dut => {
+        val enq = dut.io.enq
+        val deq = dut.io.deq
+        val order = Vector(1.U, 2.U, 3.U, 4.U)
+
+        for (i <- 0 until 4) {
+          enq.write.poke(true.B)
+          deq.read.poke(false.B)
+          enq.din.poke(order(i))
+          while (enq.full.peek.litValue == 0){
+            dut.clock.step(1)
+          }
+        }
+        
+        for (i <- 0 until 4) {
+          
+          enq.write.poke(false.B)
+          deq.read.poke(true.B)
+          deq.dout.expect(order(i))
+
+          while (deq.empty.peek.litValue == 0){
+            dut.clock.step(1)
+          }
+        }
+
+      }
+    }
+  }
+
+  it should "handle corner cases" in {
+    throw new Error("Missing test")
+  }
+
+  it should "ignore data when full" in {
+    throw new Error("Missing test")
   }
 
 }
